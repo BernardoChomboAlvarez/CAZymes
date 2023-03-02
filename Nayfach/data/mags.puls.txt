@@ -1,0 +1,23 @@
+1.Put prefix fna/ and sufix .fna.gz to the list files.
+$ sed -i -e 's/^/fna\//' list.txt
+$ sed -i -e 's/$/.fna.gz/' list.txt
+
+
+1.1.Extract  Mags
+$ for cosa in $(cat list.txt);do(tar -xf /tres/DB/Nayfach_MAGs/fna.tar $cosa);done
+
+2.Make directories with the names of the Nayfach project
+$ ls *fna* | sed s'/.fna.gz//g' > list.txt
+$ for cosa in $(cat list.txt);do (mkdir $cosa) ;done
+$ for cosa in $(cat list.txt);do (mv fna/$cosa.fna.gz* $cosa/) ;done
+$ for cosa in $(cat list.txt);do (cd $cosa && gzip -d *.gz);done
+$ for cosa in $(cat list.txt);do (cd $cosa && ln -s ~/scripts/diamond.sh .) ;done
+$ for cosa in $(cat list.txt);do (cd $cosa && qsub -V diamond.sh) ;done
+
+Checar qsub 
+$ qstat 
+
+1.2 Retrieve PUL counts.
+$ cut -f2 pul.matches.tsv | sort| uniq -c
+
+

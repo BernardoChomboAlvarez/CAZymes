@@ -1,0 +1,1 @@
+/home/bernardo/scripts/diamond.sh
