@@ -1,0 +1,82 @@
+### Steps to reproduce CAZy annotation
+
+### get all HQ mags
+cat all_HQ_mags_list.txt | while read i 
+do  
+   cp ./gems-52515-faa/${i} ./hq
+done
+
+### number of HQ mags is 9143
+
+###
+### dbCAN
+### version CAZyDB.07312019.fa, HMMER 3.3, run-dbcan==2.0.11 
+
+for file in *.faa 
+do 
+mag_id=${file%%.faa}
+echo "== processing MAG ${mag_id} ==" \
+&& ./miniconda3/envs/run_dbcan/bin/run_dbcan.py ./${file} protein --db_dir ./miniconda3/envs/run_dbcan/db -t hmmer --out_dir ./dbcan_annotation/${mag_id} --hmm_cpu 1
+done
+
+### rename output after folder
+while read -rd $'\0' f; do 
+  d="${f%/*}"; p="${d/\//_}";
+  mv -- "$f" "${d}/${p}_${f##*/}"
+done < <(find -type f -name '*hmmer.out' -printf '%P\0')
+
+### copy recursive
+find . -name "*_hmmer.out" -type f -exec cp {} ../dbcan_annotation_renamed \;
+
+cd ../dbcan_annotation_renamed/
+
+### omit header row from all
+for file in *_hmmer.out
+do
+   output=${file%%_hmmer.out}_hmmer.txt
+   tail -n +2 ${file} > ${output}
+done
+
+### add filename to first column
+for i in *_hmmer.txt
+do 
+	nawk '{print FILENAME"\t"$0}' $i > $i.bk
+	mv $i.bk $i
+done
+
+### merge together
+cat *_hmmer.txt > all_mags_dbcan.txt
+
+
+###
+### 16S rRNA extraction
+### get all HQ mags
+cat ./all_HQ_mags_list.txt | while read i 
+do  
+   cp ./gems-52515-fna/${i} ./hq_fna
+done
+
+### rnammer loop
+for file in *.fna
+do
+   mag_id=${file%%.fna}
+rnammer-1.2 -S bac -xml ${mag_id}.xml -f ${mag_id}_16S.fas < ${file}
+done
+
+### append MAG name
+for file in *_16S.fas
+do
+   mag_id=${file%%_16S.fas}
+awk -v fname="$mag_id" '/^>/ {$0=$0 "|" fname}1' ${file} > ${mag_id}_renamed_16S.fas
+done
+
+### merge
+cat *_renamed_16S.fas > all_16S.fas
+
+### linearize
+awk '/^>/{print s? s"\n"$0:$0;s="";next}{s=s sprintf("%s",$0)}END{if(s)print s}' all_16S.fas > all_16S_lin.fas
+
+### grep 16S rRNA
+grep "molecule=16s_rRNA" -A 1 all_16S_lin.fas --no-group-separator > 16S_HQ_mags.fas
+
+
